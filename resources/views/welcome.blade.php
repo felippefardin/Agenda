@@ -17,6 +17,25 @@
         .priority-important { border-left: 5px solid #f59e0b !important; background: #fef3c7 !important; color: #b45309 !important; }
         .priority-optional { border-left: 5px solid #10b981 !important; background: #d1fae5 !important; color: #047857 !important; }
         .fc-event { border: none !important; margin: 2px 4px !important; padding: 2px 5px !important; font-weight: bold; font-size: 0.85em; }
+        
+        /* Estilo para as notificações fixas */
+        #notification-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 320px;
+        }
+        .notif-item {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen p-4">
@@ -28,6 +47,8 @@
         </header>
         <div id="calendar" class="p-6 min-h-[750px]"></div>
     </div>
+
+    <div id="notification-container"></div>
 
     <div id="actionModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-40 p-4">
         <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
@@ -62,8 +83,6 @@
             </div>
             <form id="taskForm" class="p-6 space-y-4">
                 <input type="hidden" id="taskId">
-                <input type="hidden" id="originalDate">
-                
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nome</label>
                     <input type="text" id="title" class="w-full border-2 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" required>
@@ -72,42 +91,25 @@
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Descrição</label>
                     <textarea id="description" class="w-full border-2 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" rows="3"></textarea>
                 </div>
-                
-                <div id="dateEditGroup">
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Data do Compromisso</label>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Data</label>
                     <input type="date" id="taskDate" class="w-full border-2 p-3 rounded-xl outline-none" required>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Hora</label>
-                        <input type="time" id="taskTime" class="w-full border-2 p-3 rounded-xl outline-none" required>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Prioridade</label>
-                        <select id="priority" class="w-full border-2 p-3 rounded-xl bg-white outline-none">
-                            <option value="urgent">🔥 Urgente</option>
-                            <option value="important">⭐ Importante</option>
-                            <option value="optional">☕ Opcional</option>
-                        </select>
-                    </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Prioridade</label>
+                    <select id="priority" class="w-full border-2 p-3 rounded-xl bg-white outline-none">
+                        <option value="urgent">🔥 Urgente</option>
+                        <option value="important">⭐ Importante</option>
+                        <option value="optional">☕ Opcional</option>
+                    </select>
                 </div>
+
                 <div class="flex gap-2 pt-4">
                     <button type="button" id="btnDelete" onclick="deleteTask()" class="hidden flex-1 bg-rose-50 text-rose-600 font-bold py-3 rounded-xl border border-rose-200">Remover</button>
-                    <button type="submit" class="flex-[2] bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700">Salvar Alterações</button>
+                    <button type="submit" class="flex-[2] bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700">Salvar</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <div id="notifToast" class="hidden fixed bottom-6 right-6 bg-slate-900 text-white p-5 rounded-2xl shadow-2xl border-l-4 border-indigo-500 z-[100] max-w-xs">
-        <div class="flex items-start gap-4">
-            <div class="bg-indigo-500/20 p-2 rounded-lg text-indigo-400"><i class="fas fa-bell"></i></div>
-            <div>
-                <h4 class="font-bold text-sm">Lembrete Próximo</h4>
-                <p id="notifText" class="text-xs text-slate-300 mt-1"></p>
-                <button onclick="this.parentElement.parentElement.parentElement.classList.add('hidden')" class="mt-3 text-[10px] font-bold uppercase tracking-wider text-indigo-400">Fechar</button>
-            </div>
         </div>
     </div>
 
@@ -123,36 +125,47 @@
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'pt-br',
-                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,dayGridWeek' },
+                displayEventTime: false,
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' },
                 dateClick: (info) => {
                     selectedDay = info.dateStr;
-                    document.getElementById('actionDateLabel').innerText = new Date(selectedDay).toLocaleDateString('pt-BR', {day:'numeric', month:'long'});
+                    document.getElementById('actionDateLabel').innerText = new Date(selectedDay + "T00:00:00").toLocaleDateString('pt-BR', {day:'numeric', month:'long'});
                     document.getElementById('actionModal').classList.remove('hidden');
+                },
+                eventDataTransform: function(task) {
+                    return {
+                        id: task.id,
+                        title: task.title,
+                        start: task.start_time,
+                        end: task.end_time,
+                        extendedProps: { priority: task.priority, description: task.description }
+                    };
                 },
                 events: '/tasks',
                 eventClassNames: (arg) => ['priority-' + arg.event.extendedProps.priority]
             });
             calendar.render();
-            setInterval(checkNotifications, 30000);
+
+            // Ativa a checagem de notificações do dia ao carregar
+            checkTodayNotifications();
         });
 
         async function showDayTasks() {
             const res = await fetch(`/tasks?date=${selectedDay}`);
             const tasks = await res.json();
             const list = document.getElementById('dayTasksList');
-            document.getElementById('actionModal').classList.add('hidden');
+            closeModals();
             document.getElementById('listModal').classList.remove('hidden');
 
-            list.innerHTML = tasks.length ? '' : '<p class="text-center text-slate-400 py-4">Nenhum compromisso para hoje.</p>';
+            list.innerHTML = tasks.length ? '' : '<p class="text-center text-slate-400 py-10">Nenhum compromisso.</p>';
             tasks.forEach(task => {
-                const time = new Date(task.start_time).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
                 list.innerHTML += `
-                    <div onclick="editTask(${JSON.stringify(task).replace(/"/g, '&quot;')})" class="p-4 border-2 border-slate-50 rounded-xl hover:border-indigo-200 cursor-pointer bg-white">
+                    <div onclick='editTask(${JSON.stringify(task).replace(/'/g, "&apos;")})' class="p-4 border-2 border-slate-50 rounded-xl hover:border-indigo-200 cursor-pointer bg-white transition-all shadow-sm">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="text-xs font-mono font-bold text-indigo-600">${time}h</span>
                             <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100">${task.priority}</span>
                         </div>
                         <h4 class="font-bold text-slate-800">${task.title}</h4>
+                        <p class="text-xs text-slate-500 line-clamp-2">${task.description || ''}</p>
                     </div>`;
             });
         }
@@ -162,24 +175,21 @@
             document.getElementById('taskId').value = "";
             document.getElementById('taskDate').value = selectedDay;
             document.getElementById('btnDelete').classList.add('hidden');
-            document.getElementById('actionModal').classList.add('hidden');
+            closeModals();
             document.getElementById('formModal').classList.remove('hidden');
             document.getElementById('formTitle').innerText = "Novo Compromisso";
         }
 
         function editTask(task) {
             const dateOnly = task.start_time.split('T')[0] || task.start_time.split(' ')[0];
-            const timeOnly = new Date(task.start_time).toTimeString().substring(0,5);
-
             document.getElementById('taskId').value = task.id;
             document.getElementById('title').value = task.title;
-            document.getElementById('description').value = task.description;
+            document.getElementById('description').value = task.description || '';
             document.getElementById('taskDate').value = dateOnly;
-            document.getElementById('taskTime').value = timeOnly;
             document.getElementById('priority').value = task.priority;
             
             document.getElementById('btnDelete').classList.remove('hidden');
-            document.getElementById('listModal').classList.add('hidden');
+            closeModals();
             document.getElementById('formModal').classList.remove('hidden');
             document.getElementById('formTitle').innerText = "Editar Compromisso";
         }
@@ -188,51 +198,65 @@
             e.preventDefault();
             const id = document.getElementById('taskId').value;
             const newDate = document.getElementById('taskDate').value;
-            const time = document.getElementById('taskTime').value;
 
             const payload = {
                 title: document.getElementById('title').value,
                 description: document.getElementById('description').value,
                 priority: document.getElementById('priority').value,
-                start_time: `${newDate} ${time}:00`,
+                start_time: `${newDate} 00:00:00`,
                 end_time: `${newDate} 23:59:59`,
                 category: 'Work'
             };
 
             const response = await fetch(id ? `/tasks/${id}` : '/tasks', {
                 method: id ? 'PUT' : 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             if(response.ok) {
                 closeModals();
                 calendar.refetchEvents();
-                // Redireciona visualmente o calendário para a nova data
                 calendar.gotoDate(newDate);
+                checkTodayNotifications(); // Atualiza notificações ao salvar
             }
         });
 
         async function deleteTask() {
             const id = document.getElementById('taskId').value;
-            if (confirm('Deseja excluir este compromisso?')) {
-                await fetch(`/tasks/${id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf } });
-                closeModals();
-                calendar.refetchEvents();
+            if (id && confirm('Excluir permanentemente este compromisso?')) {
+                const response = await fetch(`/tasks/${id}`, { 
+                    method: 'DELETE', 
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } 
+                });
+                if (response.ok) {
+                    closeModals();
+                    calendar.refetchEvents();
+                    checkTodayNotifications(); // Atualiza notificações ao remover
+                }
             }
         }
 
-        async function checkNotifications() {
-            const res = await fetch('/tasks');
+        // FUNÇÃO PARA MOSTRAR TODAS AS NOTIFICAÇÕES DO DIA
+        async function checkTodayNotifications() {
+            const today = new Date().toISOString().split('T')[0];
+            const res = await fetch(`/tasks?date=${today}`);
             const tasks = await res.json();
-            const agora = new Date().getTime();
+            const container = document.getElementById('notification-container');
+            
+            container.innerHTML = ''; // Limpa antes de carregar as atuais do dia
 
             tasks.forEach(task => {
-                const diff = new Date(task.start_time).getTime() - agora;
-                if (diff > 0 && diff <= 1800000 && !task.is_notified) {
-                    document.getElementById('notifText').innerText = `O compromisso "${task.title}" começa em 30 min!`;
-                    document.getElementById('notifToast').classList.remove('hidden');
-                }
+                const div = document.createElement('div');
+                div.className = "notif-item bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-l-4 border-indigo-500 flex justify-between items-start";
+                div.innerHTML = `
+                    <div>
+                        <h4 class="font-bold text-sm">Hoje: ${task.title}</h4>
+                        <p class="text-xs text-slate-400 mt-1">${task.description || 'Compromisso agendado'}</p>
+                    </div>
+                    <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white ml-4 text-lg">&times;</button>
+                `;
+                container.appendChild(div);
             });
         }
 
