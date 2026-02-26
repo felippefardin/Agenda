@@ -19,6 +19,7 @@ return new class extends Migration
     $table->string('priority');
     $table->dateTime('start_time');
     $table->dateTime('end_time');
+    $table->boolean('is_notified')->default(false);
     $table->timestamps();
 });
     }
