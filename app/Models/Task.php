@@ -19,8 +19,8 @@ class Task extends Model
 
     
     protected $casts = [
-        'start_time' => 'datetime',
-        'end_time' => 'datetime',
-        'is_notified' => 'boolean'
-    ];
+    'start_time' => 'datetime',
+    'end_time' => 'datetime',
+    'is_notified' => 'boolean'
+];
 }
