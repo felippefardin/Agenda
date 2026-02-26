@@ -4,120 +4,186 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Agenda Moderna</title>
+    <title>Agenda Interativa - Bug Criativo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <style>
+        .fc-event { cursor: pointer; padding: 2px 5px; border-radius: 6px; }
+        .priority-urgent { background-color: #ef4444 !important; border: none !important; }
+        .priority-important { background-color: #f59e0b !important; border: none !important; }
+        .priority-optional { background-color: #10b981 !important; border: none !important; }
+        .fc-daygrid-day:hover { background-color: #f8fafc; cursor: cell; }
+    </style>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans text-slate-900">
+<body class="bg-slate-100 min-h-screen p-4 md:p-8">
 
-    <div class="max-w-5xl mx-auto px-4 py-12">
-        <header class="flex justify-between items-center mb-10">
-            <h1 class="text-4xl font-extrabold text-indigo-600 flex items-center gap-3">
-                <i class="fas fa-calendar-alt"></i> Minha Agenda
-            </h1>
-            <div id="notification-status" class="text-sm font-medium text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm">
-                Notificações Ativas (1h antes)
+    <div class="max-w-6xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border border-slate-200">
+        <header class="p-6 bg-indigo-600 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold"><i class="fas fa-calendar-alt mr-2"></i>Minha Agenda</h1>
+                <p class="text-xs opacity-75">Clique no dia para anotar seu compromisso</p>
             </div>
+            <div id="notif-indicator" class="text-xs bg-indigo-500 px-3 py-1 rounded-full">Notificações: Ativas</div>
         </header>
+        
+        <div id="calendar" class="p-6 min-h-[750px]"></div>
+    </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-1">
-                <div class="bg-white shadow-xl shadow-slate-200/50 rounded-2xl p-8 sticky top-8">
-                    <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
-                        <i class="fas fa-plus-circle text-indigo-500"></i> Novo Evento
-                    </h2>
-
-                    <form id="taskForm" class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-semibold mb-1">Título</label>
-                            <input type="text" id="title" class="w-full border-slate-200 border-2 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Ex: Reunião de Pauta" required>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-semibold mb-1">Prioridade</label>
-                            <select id="priority" class="w-full border-slate-200 border-2 p-3 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-                                <option value="urgent">🔥 Urgente</option>
-                                <option value="important">⭐ Importante</option>
-                                <option value="optional">☕ Opcional</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-semibold mb-1 text-indigo-600">Início</label>
-                            <input type="datetime-local" id="start_time" class="w-full border-slate-200 border-2 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer" required>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-semibold mb-1 text-rose-500">Fim</label>
-                            <input type="datetime-local" id="end_time" class="w-full border-slate-200 border-2 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer" required>
-                        </div>
-
-                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-1">
-                            Salvar na Agenda
-                        </button>
-                    </form>
-                </div>
+    <div id="taskModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl scale-95 transition-transform">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 id="modalTitle" class="text-xl font-bold text-slate-800">Agendar</h2>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
             </div>
-
-            <div class="lg:col-span-2">
-                <div class="bg-white shadow-xl shadow-slate-200/50 rounded-2xl p-8">
-                    <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
-                        <i class="fas fa-tasks text-indigo-500"></i> Seus Compromissos
-                    </h2>
-                    <div id="taskList" class="space-y-4">
-                        </div>
+            
+            <form id="taskForm" class="p-6 space-y-4">
+                <input type="hidden" id="taskId">
+                <input type="hidden" id="start_date_hidden">
+                
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Título do Compromisso</label>
+                    <input type="text" id="title" class="w-full border-2 border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" placeholder="O que você vai fazer?" required>
                 </div>
-            </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Nível de Prioridade</label>
+                    <select id="priority" class="w-full border-2 border-slate-200 p-3 rounded-xl bg-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                        <option value="urgent">🔥 Urgente</option>
+                        <option value="important">⭐ Importante</option>
+                        <option value="optional">☕ Opcional</option>
+                    </select>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" id="btnDelete" onclick="deleteTask()" class="hidden flex-1 bg-rose-50 text-rose-600 font-bold py-3 rounded-xl hover:bg-rose-100 transition-colors border border-rose-200">Excluir</button>
+                    <button type="submit" id="btnSave" class="flex-[2] bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all transform active:scale-95">Salvar</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <script>
-        // Lógica de busca e exibição (Simplificada para o exemplo)
-        async function loadTasks() {
+        let calendar;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'pt-br',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
+                dateClick: (info) => openModal(null, info.dateStr),
+                eventClick: (info) => openModal(info.event),
+                events: '/tasks', // Rota GET definida no seu web.php
+                eventClassNames: (arg) => ['priority-' + arg.event.extendedProps.priority]
+            });
+            calendar.render();
+            
+            // Solicitar permissão de notificação
+            if (Notification.permission !== "granted") Notification.requestPermission();
+            setInterval(checkNotifications, 60000);
+        });
+
+        function openModal(event = null, date = null) {
+            const modal = document.getElementById('taskModal');
+            document.getElementById('taskForm').reset();
+            modal.classList.remove('hidden');
+
+            if (event) {
+                document.getElementById('modalTitle').innerText = "Editar Compromisso";
+                document.getElementById('taskId').value = event.id;
+                document.getElementById('title').value = event.title;
+                document.getElementById('priority').value = event.extendedProps.priority;
+                document.getElementById('btnDelete').classList.remove('hidden');
+            } else {
+                document.getElementById('modalTitle').innerText = "Novo Compromisso";
+                document.getElementById('taskId').value = "";
+                document.getElementById('start_date_hidden').value = date;
+                document.getElementById('btnDelete').classList.add('hidden');
+            }
+        }
+
+        function closeModal() { document.getElementById('taskModal').classList.add('hidden'); }
+
+        // LÓGICA DE SALVAMENTO CORRIGIDA PARA O SEU CONTROLLER
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnSave');
+            const id = document.getElementById('taskId').value;
+            
+            btn.disabled = true;
+            btn.innerText = 'Processando...';
+
+            const url = id ? `/tasks/${id}` : '/tasks';
+            const method = id ? 'PUT' : 'POST';
+
+            // Dados formatados para passar na validação do seu TaskController.php
+            const payload = {
+                title: document.getElementById('title').value,
+                priority: document.getElementById('priority').value,
+                description: "Criado via calendário",
+                category: "Work", // Valor aceito no seu 'in:Work,...'
+                // Formatação de data que o Laravel entende
+                start_time: id ? undefined : document.getElementById('start_date_hidden').value + " 09:00:00",
+                end_time: id ? undefined : document.getElementById('start_date_hidden').value + " 10:00:00"
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    calendar.refetchEvents(); // Atualiza o calendário visualmente
+                    closeModal();
+                } else {
+                    const erro = await response.json();
+                    alert('Erro: ' + (erro.message || 'Verifique as datas.'));
+                }
+            } catch (error) {
+                alert('Erro de conexão.');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Salvar';
+            }
+        });
+
+        async function deleteTask() {
+            const id = document.getElementById('taskId').value;
+            if (confirm('Deseja excluir este compromisso?')) {
+                const response = await fetch(`/tasks/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrfToken }
+                });
+                if (response.ok) {
+                    calendar.refetchEvents();
+                    closeModal();
+                }
+            }
+        }
+
+        async function checkNotifications() {
             const response = await fetch('/tasks');
             const tasks = await response.json();
-            const list = document.getElementById('taskList');
-            list.innerHTML = '';
+            const agora = new Date().getTime();
 
             tasks.forEach(task => {
-                const date = new Date(task.start_time).toLocaleString('pt-BR');
-                const priorityColors = {
-                    urgent: 'bg-rose-100 text-rose-700 border-rose-200',
-                    important: 'bg-amber-100 text-amber-700 border-amber-200',
-                    optional: 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                };
-
-                list.innerHTML += `
-                    <div class="flex items-center justify-between p-5 border-2 border-slate-50 rounded-2xl hover:border-indigo-100 transition-colors">
-                        <div class="flex gap-4 items-start">
-                            <div class="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-lg">${task.title}</h3>
-                                <p class="text-slate-500 text-sm italic">${date}</p>
-                                <span class="inline-block mt-2 px-3 py-1 text-xs font-bold rounded-full border ${priorityColors[task.priority] || 'bg-slate-100'}">
-                                    ${task.priority.toUpperCase()}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                const diff = new Date(task.start_time).getTime() - agora;
+                // Notifica se faltar entre 59 e 60 minutos
+                if (diff > 3540000 && diff <= 3600000) {
+                    if (Notification.permission === "granted") {
+                        new Notification("Lembrete: " + task.title, { body: "Seu compromisso começa em 1 hora!" });
+                    }
+                }
             });
         }
-        window.onload = loadTasks;
-
-        // Solicitar permissão de notificação
-if (Notification.permission !== "granted") {
-    Notification.requestPermission();
-}
-
-function checkNotifications() {
-    const tasks = document.querySelectorAll('#taskList > div');
-    tasks.forEach(async () => {        
-    });
-}
-setInterval(checkNotifications, 60000);
     </script>
 </body>
 </html>
