@@ -18,7 +18,6 @@
         .priority-optional { border-left: 5px solid #10b981 !important; background: #d1fae5 !important; color: #047857 !important; }
         .fc-event { border: none !important; margin: 2px 4px !important; padding: 2px 5px !important; font-weight: bold; font-size: 0.85em; }
         
-        /* Estilo para as notificações fixas */
         #notification-container {
             position: fixed;
             bottom: 20px;
@@ -141,17 +140,20 @@
                         extendedProps: { priority: task.priority, description: task.description }
                     };
                 },
-                events: '/tasks',
+                // Ajuste: URL absoluta gerada pelo Laravel
+                events: "{{ url('/tasks') }}",
                 eventClassNames: (arg) => ['priority-' + arg.event.extendedProps.priority]
             });
             calendar.render();
 
-            // Ativa a checagem de notificações do dia ao carregar
             checkTodayNotifications();
         });
 
         async function showDayTasks() {
-            const res = await fetch(`/tasks?date=${selectedDay}`);
+            // Ajuste: URL absoluta e headers
+            const res = await fetch(`{{ url('/tasks') }}?date=${selectedDay}`, {
+                headers: { 'Accept': 'application/json' }
+            });
             const tasks = await res.json();
             const list = document.getElementById('dayTasksList');
             closeModals();
@@ -208,56 +210,81 @@
                 category: 'Work'
             };
 
-            const response = await fetch(id ? `/tasks/${id}` : '/tasks', {
-                method: id ? 'PUT' : 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            // Ajuste: URL absoluta gerada pelo Laravel
+            const url = id ? `{{ url('/tasks') }}/${id}` : `{{ url('/tasks') }}`;
 
-            if(response.ok) {
-                closeModals();
-                calendar.refetchEvents();
-                calendar.gotoDate(newDate);
-                checkTodayNotifications(); // Atualiza notificações ao salvar
+            try {
+                const response = await fetch(url, {
+                    method: id ? 'PUT' : 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'X-CSRF-TOKEN': csrf, 
+                        'Accept': 'application/json' 
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    closeModals();
+                    calendar.refetchEvents();
+                    calendar.gotoDate(newDate);
+                    checkTodayNotifications();
+                    alert('Sucesso!');
+                } else {
+                    console.error('Erro de validação:', data.errors);
+                    alert('Erro ao salvar: ' + (data.message || 'Verifique os dados.'));
+                }
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+                alert('Erro de conexão com o servidor.');
             }
         });
 
         async function deleteTask() {
             const id = document.getElementById('taskId').value;
             if (id && confirm('Excluir permanentemente este compromisso?')) {
-                const response = await fetch(`/tasks/${id}`, { 
+                const response = await fetch(`{{ url('/tasks') }}/${id}`, { 
                     method: 'DELETE', 
-                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } 
+                    headers: { 
+                        'X-CSRF-TOKEN': csrf, 
+                        'Accept': 'application/json' 
+                    } 
                 });
                 if (response.ok) {
                     closeModals();
                     calendar.refetchEvents();
-                    checkTodayNotifications(); // Atualiza notificações ao remover
+                    checkTodayNotifications();
                 }
             }
         }
 
-        // FUNÇÃO PARA MOSTRAR TODAS AS NOTIFICAÇÕES DO DIA
         async function checkTodayNotifications() {
             const today = new Date().toISOString().split('T')[0];
-            const res = await fetch(`/tasks?date=${today}`);
-            const tasks = await res.json();
-            const container = document.getElementById('notification-container');
-            
-            container.innerHTML = ''; // Limpa antes de carregar as atuais do dia
-
-            tasks.forEach(task => {
-                const div = document.createElement('div');
-                div.className = "notif-item bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-l-4 border-indigo-500 flex justify-between items-start";
-                div.innerHTML = `
-                    <div>
-                        <h4 class="font-bold text-sm">Hoje: ${task.title}</h4>
-                        <p class="text-xs text-slate-400 mt-1">${task.description || 'Compromisso agendado'}</p>
-                    </div>
-                    <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white ml-4 text-lg">&times;</button>
-                `;
-                container.appendChild(div);
+            // Ajuste: URL absoluta
+            const res = await fetch(`{{ url('/tasks') }}?date=${today}`, {
+                headers: { 'Accept': 'application/json' }
             });
+            
+            if (res.ok) {
+                const tasks = await res.json();
+                const container = document.getElementById('notification-container');
+                container.innerHTML = '';
+
+                tasks.forEach(task => {
+                    const div = document.createElement('div');
+                    div.className = "notif-item bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-l-4 border-indigo-500 flex justify-between items-start";
+                    div.innerHTML = `
+                        <div>
+                            <h4 class="font-bold text-sm">Hoje: ${task.title}</h4>
+                            <p class="text-xs text-slate-400 mt-1">${task.description || 'Compromisso agendado'}</p>
+                        </div>
+                        <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white ml-4 text-lg">&times;</button>
+                    `;
+                    container.appendChild(div);
+                });
+            }
         }
 
         function closeModals() {

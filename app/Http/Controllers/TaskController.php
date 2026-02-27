@@ -8,7 +8,7 @@ use Carbon\Carbon;
 
 class TaskController extends Controller
 {
-    // Listar tarefas - agora aceita ?date=YYYY-MM-DD
+    // Listar tarefas - aceita filtro por data ?date=YYYY-MM-DD
     public function index(Request $request)
     {
         $query = Task::query();
@@ -18,23 +18,25 @@ class TaskController extends Controller
         return $query->orderBy('start_time', 'asc')->get();
     }
 
-    // Criar nova tarefa
+    // Criar nova tarefa com validação robusta
     public function store(Request $request)
     {
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'category' => 'nullable|in:Work,Short-term Project,Long-term Project',
+            'category' => 'nullable|string',
             'priority' => 'required|in:urgent,important,optional',
             'start_time' => 'required|date',
-            'end_time' => 'required|date|after:start_time'
+            'end_time' => 'required|date|after_or_equal:start_time'
         ]);
 
         $task = Task::create($request->all());
+        
+        // Uso correto do helper response() para evitar erros fatais
         return response()->json($task, 201);
     }
 
-    // Busca notificações próximas (1h antes)
+    // Busca notificações próximas (próxima 1 hora)
     public function checkNotifications()
     {
         return Task::where('is_notified', false)
@@ -53,16 +55,28 @@ class TaskController extends Controller
         return response()->json(['message' => 'Adiado']);
     }
 
+    // Atualizar tarefa existente
     public function update(Request $request, $id)
     {
         $task = Task::findOrFail($id);
+        
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'priority' => 'required|in:urgent,important,optional',
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after_or_equal:start_time'
+        ]);
+
         $task->update($request->all());
         return response()->json($task);
     }
 
+    // Remover tarefa
     public function destroy($id)
     {
-        Task::findOrFail($id)->delete();
+        $task = Task::findOrFail($id);
+        $task->delete();
         return response()->json(['message' => 'Removida']);
     }
 }

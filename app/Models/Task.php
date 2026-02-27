@@ -7,13 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class Task extends Model
 {
     
-    protected $fillable = [
-        'title', 
-        'description', 
-        'category', 
-        'priority', 
-        'start_time', 
-        'end_time', 
+  protected $fillable = [
+        'title',
+        'description',
+        'category',
+        'priority',
+        'start_time',
+        'end_time',
         'is_notified'
     ];
 
