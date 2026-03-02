@@ -16,7 +16,7 @@
         .priority-urgent { border-left: 5px solid #ef4444 !important; background: #fee2e2 !important; color: #b91c1c !important; }
         .priority-important { border-left: 5px solid #f59e0b !important; background: #fef3c7 !important; color: #b45309 !important; }
         .priority-optional { border-left: 5px solid #10b981 !important; background: #d1fae5 !important; color: #047857 !important; }
-        .fc-event { border: none !important; margin: 2px 4px !important; padding: 2px 5px !important; font-weight: bold; font-size: 0.85em; }
+        .fc-event { border: none !important; margin: 2px 4px !important; padding: 2px 5px !important; font-weight: bold; font-size: 0.85em; border-radius: 6px !important; }
         
         #notification-container {
             position: fixed;
@@ -35,6 +35,10 @@
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
+        .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+        .dot-urgent { background-color: #ef4444; }
+        .dot-important { background-color: #f59e0b; }
+        .dot-optional { background-color: #10b981; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen p-4">
@@ -95,13 +99,23 @@
                     <input type="date" id="taskDate" class="w-full border-2 p-3 rounded-xl outline-none" required>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Prioridade</label>
-                    <select id="priority" class="w-full border-2 p-3 rounded-xl bg-white outline-none">
-                        <option value="urgent">🔥 Urgente</option>
-                        <option value="important">⭐ Importante</option>
-                        <option value="optional">☕ Opcional</option>
-                    </select>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Prioridade</label>
+                        <select id="priority" class="w-full border-2 p-3 rounded-xl bg-white outline-none">
+                            <option value="urgent">🔴 Urgente</option>
+                            <option value="important">🟡 Importante</option>
+                            <option value="optional">🟢 Opcional</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label>
+                        <select id="category" class="w-full border-2 p-3 rounded-xl bg-white outline-none">
+                            <option value="fechado">🔒 Fechado</option>
+                            <option value="andamento">⏳ Em andamento</option>
+                            <option value="finalizado">✅ Finalizado</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="flex gap-2 pt-4">
@@ -117,12 +131,9 @@
         let selectedDay;
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
-        // Função para exibir os Flashcards solicitados
         function showFlashcard(message, type = 'success') {
             const container = document.getElementById('notification-container');
             const flashcard = document.createElement('div');
-            
-            // Define a cor: Verde para sucesso/edição, Vermelho para exclusão
             const bgColor = type === 'success' ? 'bg-emerald-600' : 'bg-rose-600';
             
             flashcard.className = `notif-item ${bgColor} text-white p-4 rounded-xl shadow-2xl flex justify-between items-center min-w-[280px]`;
@@ -135,11 +146,7 @@
             `;
 
             container.appendChild(flashcard);
-
-            // Desaparece automaticamente após 3 segundos
-            setTimeout(() => {
-                if (flashcard.parentElement) flashcard.remove();
-            }, 3000);
+            setTimeout(() => { if (flashcard.parentElement) flashcard.remove(); }, 3000);
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -162,8 +169,20 @@
                         title: task.title,
                         start: task.start_time,
                         end: task.end_time,
-                        extendedProps: { priority: task.priority, description: task.description }
+                        extendedProps: { priority: task.priority, description: task.description, category: task.category }
                     };
+                },
+                // Adiciona o status no texto do evento na capa do calendário
+                eventContent: function(arg) {
+                    const status = arg.event.extendedProps.category || 'fechado';
+                    const icon = status === 'finalizado' ? '✅' : (status === 'andamento' ? '⏳' : '🔒');
+                    
+                    let arrayOfDomNodes = [];
+                    let titleEl = document.createElement('div');
+                    titleEl.className = 'fc-event-title-container flex items-center gap-1 overflow-hidden';
+                    titleEl.innerHTML = `<span class="text-[10px] opacity-80">${icon}</span> <span class="truncate">${arg.event.title}</span>`;
+                    arrayOfDomNodes.push(titleEl);
+                    return { domNodes: arrayOfDomNodes };
                 },
                 events: "{{ url('/tasks') }}",
                 eventClassNames: (arg) => ['priority-' + arg.event.extendedProps.priority]
@@ -184,10 +203,19 @@
 
             list.innerHTML = tasks.length ? '' : '<p class="text-center text-slate-400 py-10">Nenhum compromisso.</p>';
             tasks.forEach(task => {
+                const dotClass = task.priority === 'urgent' ? 'dot-urgent' : (task.priority === 'important' ? 'dot-important' : 'dot-optional');
+                const statusIcon = task.category === 'finalizado' ? '✅' : (task.category === 'andamento' ? '⏳' : '🔒');
+                const statusLabel = task.category ? task.category.charAt(0).toUpperCase() + task.category.slice(1) : 'Fechado';
+                
                 list.innerHTML += `
                     <div onclick='editTask(${JSON.stringify(task).replace(/'/g, "&apos;")})' class="p-4 border-2 border-slate-50 rounded-xl hover:border-indigo-200 cursor-pointer bg-white transition-all shadow-sm">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100">${task.priority}</span>
+                            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 flex items-center">
+                                <span class="dot ${dotClass}"></span>${task.priority}
+                            </span>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase italic flex items-center gap-1">
+                                ${statusIcon} ${statusLabel}
+                            </span>
                         </div>
                         <h4 class="font-bold text-slate-800">${task.title}</h4>
                         <p class="text-xs text-slate-500 line-clamp-2">${task.description || ''}</p>
@@ -199,6 +227,7 @@
             document.getElementById('taskForm').reset();
             document.getElementById('taskId').value = "";
             document.getElementById('taskDate').value = selectedDay;
+            document.getElementById('category').value = "fechado";
             document.getElementById('btnDelete').classList.add('hidden');
             closeModals();
             document.getElementById('formModal').classList.remove('hidden');
@@ -212,6 +241,7 @@
             document.getElementById('description').value = task.description || '';
             document.getElementById('taskDate').value = dateOnly;
             document.getElementById('priority').value = task.priority;
+            document.getElementById('category').value = task.category || 'fechado';
             
             document.getElementById('btnDelete').classList.remove('hidden');
             closeModals();
@@ -223,46 +253,30 @@
             e.preventDefault();
             const id = document.getElementById('taskId').value;
             const newDate = document.getElementById('taskDate').value;
-
             const payload = {
                 title: document.getElementById('title').value,
                 description: document.getElementById('description').value,
                 priority: document.getElementById('priority').value,
+                category: document.getElementById('category').value,
                 start_time: `${newDate} 00:00:00`,
-                end_time: `${newDate} 23:59:59`,
-                category: 'Work'
+                end_time: `${newDate} 23:59:59`
             };
-
             const url = id ? `{{ url('/tasks') }}/${id}` : `{{ url('/tasks') }}`;
-
             try {
                 const response = await fetch(url, {
                     method: id ? 'PUT' : 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'X-CSRF-TOKEN': csrf, 
-                        'Accept': 'application/json' 
-                    },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
-                const data = await response.json();
-
                 if (response.ok) {
                     closeModals();
                     calendar.refetchEvents();
                     calendar.gotoDate(newDate);
                     checkTodayNotifications();
-                    
-                    // Exibe flashcard verde conforme solicitado
                     const msg = id ? "Tarefa editada com sucesso" : "Tarefa adicionada com sucesso";
                     showFlashcard(msg, 'success');
-                } else {
-                    console.error('Erro de validação:', data.errors);
                 }
-            } catch (error) {
-                console.error('Erro na requisição:', error);
-            }
+            } catch (error) { console.error('Erro na requisição:', error); }
         });
 
         async function deleteTask() {
@@ -270,17 +284,12 @@
             if (id && confirm('Excluir permanentemente este compromisso?')) {
                 const response = await fetch(`{{ url('/tasks') }}/${id}`, { 
                     method: 'DELETE', 
-                    headers: { 
-                        'X-CSRF-TOKEN': csrf, 
-                        'Accept': 'application/json' 
-                    } 
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } 
                 });
                 if (response.ok) {
                     closeModals();
                     calendar.refetchEvents();
                     checkTodayNotifications();
-                    
-                    // Exibe flashcard vermelho conforme solicitado
                     showFlashcard('Mensagem excluída com sucesso', 'error');
                 }
             }
@@ -291,20 +300,18 @@
             const res = await fetch(`{{ url('/tasks') }}?date=${today}`, {
                 headers: { 'Accept': 'application/json' }
             });
-            
             if (res.ok) {
                 const tasks = await res.json();
                 const container = document.getElementById('notification-container');
-                // Limpa apenas as notificações de agenda, preservando flashcards ativos
                 const items = container.querySelectorAll('.notif-item:not([class*="bg-emerald"]):not([class*="bg-rose"])');
                 items.forEach(el => el.remove());
-
                 tasks.forEach(task => {
+                    const dotClass = task.priority === 'urgent' ? 'dot-urgent' : (task.priority === 'important' ? 'dot-important' : 'dot-optional');
                     const div = document.createElement('div');
                     div.className = "notif-item bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-l-4 border-indigo-500 flex justify-between items-start";
                     div.innerHTML = `
                         <div>
-                            <h4 class="font-bold text-sm">Hoje: ${task.title}</h4>
+                            <h4 class="font-bold text-sm flex items-center"><span class="dot ${dotClass}"></span>Hoje: ${task.title}</h4>
                             <p class="text-xs text-slate-400 mt-1">${task.description || 'Compromisso agendado'}</p>
                         </div>
                         <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white ml-4 text-lg">&times;</button>
