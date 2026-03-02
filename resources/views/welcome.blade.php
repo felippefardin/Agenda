@@ -127,203 +127,215 @@
     </div>
 
     <script>
-        let calendar;
-        let selectedDay;
-        const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    let calendar;
+    let selectedDay;
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
-        function showFlashcard(message, type = 'success') {
-            const container = document.getElementById('notification-container');
-            const flashcard = document.createElement('div');
-            const bgColor = type === 'success' ? 'bg-emerald-600' : 'bg-rose-600';
-            
-            flashcard.className = `notif-item ${bgColor} text-white p-4 rounded-xl shadow-2xl flex justify-between items-center min-w-[280px]`;
-            flashcard.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-trash-alt'}"></i>
-                    <span class="font-bold text-sm">${message}</span>
-                </div>
-                <button onclick="this.parentElement.remove()" class="text-white/80 hover:text-white ml-4 text-xl">&times;</button>
-            `;
+    function showFlashcard(message, type = 'success') {
+        const container = document.getElementById('notification-container');
+        const flashcard = document.createElement('div');
+        const bgColor = type === 'success' ? 'bg-emerald-600' : 'bg-rose-600';
+        
+        flashcard.className = `notif-item ${bgColor} text-white p-4 rounded-xl shadow-2xl flex justify-between items-center min-w-[280px]`;
+        flashcard.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-trash-alt'}"></i>
+                <span class="font-bold text-sm">${message}</span>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-white/80 hover:text-white ml-4 text-xl">&times;</button>
+        `;
 
-            container.appendChild(flashcard);
-            setTimeout(() => { if (flashcard.parentElement) flashcard.remove(); }, 3000);
+        container.appendChild(flashcard);
+        setTimeout(() => { if (flashcard.parentElement) flashcard.remove(); }, 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
+
+        const calendarEl = document.getElementById('calendar');
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'pt-br',
+            displayEventTime: false,
+            headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' },
+            // AJUSTE: Tradução dos botões da interface
+            buttonText: {
+                today: 'Hoje',
+                month: 'Mês'
+            },
+            dateClick: (info) => {
+                selectedDay = info.dateStr;
+                document.getElementById('actionDateLabel').innerText = new Date(selectedDay + "T00:00:00").toLocaleDateString('pt-BR', {day:'numeric', month:'long'});
+                document.getElementById('actionModal').classList.remove('hidden');
+            },
+            eventDataTransform: function(task) {
+                return {
+                    id: task.id,
+                    title: task.title,
+                    start: task.start_time,
+                    end: task.end_time,
+                    extendedProps: { priority: task.priority, description: task.description, category: task.category }
+                };
+            },
+            eventContent: function(arg) {
+                const status = arg.event.extendedProps.category || 'fechado';
+                const icon = status === 'finalizado' ? '✅' : (status === 'andamento' ? '⏳' : '🔒');
+                
+                let arrayOfDomNodes = [];
+                let titleEl = document.createElement('div');
+                titleEl.className = 'fc-event-title-container flex items-center gap-1 overflow-hidden';
+                titleEl.innerHTML = `<span class="text-[10px] opacity-80">${icon}</span> <span class="truncate">${arg.event.title}</span>`;
+                arrayOfDomNodes.push(titleEl);
+                return { domNodes: arrayOfDomNodes };
+            },
+            events: "{{ url('/tasks') }}",
+            eventClassNames: (arg) => ['priority-' + arg.event.extendedProps.priority]
+        });
+        calendar.render();
+
+        // AJUSTE: Ao clicar no botão "Mês", volta para a data atual (hoje)
+        const monthButton = document.querySelector('.fc-dayGridMonth-button');
+        if (monthButton) {
+            monthButton.addEventListener('click', function() {
+                calendar.today();
+            });
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
+        checkTodayNotifications();
+    });
 
-            const calendarEl = document.getElementById('calendar');
-            calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                locale: 'pt-br',
-                displayEventTime: false,
-                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' },
-                dateClick: (info) => {
-                    selectedDay = info.dateStr;
-                    document.getElementById('actionDateLabel').innerText = new Date(selectedDay + "T00:00:00").toLocaleDateString('pt-BR', {day:'numeric', month:'long'});
-                    document.getElementById('actionModal').classList.remove('hidden');
-                },
-                eventDataTransform: function(task) {
-                    return {
-                        id: task.id,
-                        title: task.title,
-                        start: task.start_time,
-                        end: task.end_time,
-                        extendedProps: { priority: task.priority, description: task.description, category: task.category }
-                    };
-                },
-                // Adiciona o status no texto do evento na capa do calendário
-                eventContent: function(arg) {
-                    const status = arg.event.extendedProps.category || 'fechado';
-                    const icon = status === 'finalizado' ? '✅' : (status === 'andamento' ? '⏳' : '🔒');
-                    
-                    let arrayOfDomNodes = [];
-                    let titleEl = document.createElement('div');
-                    titleEl.className = 'fc-event-title-container flex items-center gap-1 overflow-hidden';
-                    titleEl.innerHTML = `<span class="text-[10px] opacity-80">${icon}</span> <span class="truncate">${arg.event.title}</span>`;
-                    arrayOfDomNodes.push(titleEl);
-                    return { domNodes: arrayOfDomNodes };
-                },
-                events: "{{ url('/tasks') }}",
-                eventClassNames: (arg) => ['priority-' + arg.event.extendedProps.priority]
-            });
-            calendar.render();
-
-            checkTodayNotifications();
+    async function showDayTasks() {
+        const res = await fetch(`{{ url('/tasks') }}?date=${selectedDay}`, {
+            headers: { 'Accept': 'application/json' }
         });
+        const tasks = await res.json();
+        const list = document.getElementById('dayTasksList');
+        closeModals();
+        document.getElementById('listModal').classList.remove('hidden');
 
-        async function showDayTasks() {
-            const res = await fetch(`{{ url('/tasks') }}?date=${selectedDay}`, {
-                headers: { 'Accept': 'application/json' }
+        list.innerHTML = tasks.length ? '' : '<p class="text-center text-slate-400 py-10">Nenhum compromisso.</p>';
+        tasks.forEach(task => {
+            const dotClass = task.priority === 'urgent' ? 'dot-urgent' : (task.priority === 'important' ? 'dot-important' : 'dot-optional');
+            const statusIcon = task.category === 'finalizado' ? '✅' : (task.category === 'andamento' ? '⏳' : '🔒');
+            const statusLabel = task.category ? task.category.charAt(0).toUpperCase() + task.category.slice(1) : 'Fechado';
+            
+            list.innerHTML += `
+                <div onclick='editTask(${JSON.stringify(task).replace(/'/g, "&apos;")})' class="p-4 border-2 border-slate-50 rounded-xl hover:border-indigo-200 cursor-pointer bg-white transition-all shadow-sm">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 flex items-center">
+                            <span class="dot ${dotClass}"></span>${task.priority}
+                        </span>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase italic flex items-center gap-1">
+                            ${statusIcon} ${statusLabel}
+                        </span>
+                    </div>
+                    <h4 class="font-bold text-slate-800">${task.title}</h4>
+                    <p class="text-xs text-slate-500 line-clamp-2">${task.description || ''}</p>
+                </div>`;
+        });
+    }
+
+    function openFormModal() {
+        document.getElementById('taskForm').reset();
+        document.getElementById('taskId').value = "";
+        document.getElementById('taskDate').value = selectedDay;
+        document.getElementById('category').value = "fechado";
+        document.getElementById('btnDelete').classList.add('hidden');
+        closeModals();
+        document.getElementById('formModal').classList.remove('hidden');
+        document.getElementById('formTitle').innerText = "Novo Compromisso";
+    }
+
+    function editTask(task) {
+        const dateOnly = task.start_time.split('T')[0] || task.start_time.split(' ')[0];
+        document.getElementById('taskId').value = task.id;
+        document.getElementById('title').value = task.title;
+        document.getElementById('description').value = task.description || '';
+        document.getElementById('taskDate').value = dateOnly;
+        document.getElementById('priority').value = task.priority;
+        document.getElementById('category').value = task.category || 'fechado';
+        
+        document.getElementById('btnDelete').classList.remove('hidden');
+        closeModals();
+        document.getElementById('formModal').classList.remove('hidden');
+        document.getElementById('formTitle').innerText = "Editar Compromisso";
+    }
+
+    document.getElementById('taskForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('taskId').value;
+        const newDate = document.getElementById('taskDate').value;
+        const payload = {
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            priority: document.getElementById('priority').value,
+            category: document.getElementById('category').value,
+            start_time: `${newDate} 00:00:00`,
+            end_time: `${newDate} 23:59:59`
+        };
+        const url = id ? `{{ url('/tasks') }}/${id}` : `{{ url('/tasks') }}`;
+        try {
+            const response = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: JSON.stringify(payload)
             });
-            const tasks = await res.json();
-            const list = document.getElementById('dayTasksList');
-            closeModals();
-            document.getElementById('listModal').classList.remove('hidden');
+            if (response.ok) {
+                closeModals();
+                calendar.refetchEvents();
+                calendar.gotoDate(newDate);
+                checkTodayNotifications();
+                const msg = id ? "Tarefa editada com sucesso" : "Tarefa adicionada com sucesso";
+                showFlashcard(msg, 'success');
+            }
+        } catch (error) { console.error('Erro na requisição:', error); }
+    });
 
-            list.innerHTML = tasks.length ? '' : '<p class="text-center text-slate-400 py-10">Nenhum compromisso.</p>';
+    async function deleteTask() {
+        const id = document.getElementById('taskId').value;
+        if (id && confirm('Excluir permanentemente este compromisso?')) {
+            const response = await fetch(`{{ url('/tasks') }}/${id}`, { 
+                method: 'DELETE', 
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } 
+            });
+            if (response.ok) {
+                closeModals();
+                calendar.refetchEvents();
+                checkTodayNotifications();
+                showFlashcard('Mensagem excluída com sucesso', 'error');
+            }
+        }
+    }
+
+    async function checkTodayNotifications() {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`{{ url('/tasks') }}?date=${today}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+            const tasks = await res.json();
+            const container = document.getElementById('notification-container');
+            const items = container.querySelectorAll('.notif-item:not([class*="bg-emerald"]):not([class*="bg-rose"])');
+            items.forEach(el => el.remove());
             tasks.forEach(task => {
                 const dotClass = task.priority === 'urgent' ? 'dot-urgent' : (task.priority === 'important' ? 'dot-important' : 'dot-optional');
-                const statusIcon = task.category === 'finalizado' ? '✅' : (task.category === 'andamento' ? '⏳' : '🔒');
-                const statusLabel = task.category ? task.category.charAt(0).toUpperCase() + task.category.slice(1) : 'Fechado';
-                
-                list.innerHTML += `
-                    <div onclick='editTask(${JSON.stringify(task).replace(/'/g, "&apos;")})' class="p-4 border-2 border-slate-50 rounded-xl hover:border-indigo-200 cursor-pointer bg-white transition-all shadow-sm">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 flex items-center">
-                                <span class="dot ${dotClass}"></span>${task.priority}
-                            </span>
-                            <span class="text-[10px] font-bold text-slate-400 uppercase italic flex items-center gap-1">
-                                ${statusIcon} ${statusLabel}
-                            </span>
-                        </div>
-                        <h4 class="font-bold text-slate-800">${task.title}</h4>
-                        <p class="text-xs text-slate-500 line-clamp-2">${task.description || ''}</p>
-                    </div>`;
+                const div = document.createElement('div');
+                div.className = "notif-item bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-l-4 border-indigo-500 flex justify-between items-start";
+                div.innerHTML = `
+                    <div>
+                        <h4 class="font-bold text-sm flex items-center"><span class="dot ${dotClass}"></span>Hoje: ${task.title}</h4>
+                        <p class="text-xs text-slate-400 mt-1">${task.description || 'Compromisso agendado'}</p>
+                    </div>
+                    <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white ml-4 text-lg">&times;</button>
+                `;
+                container.appendChild(div);
             });
         }
+    }
 
-        function openFormModal() {
-            document.getElementById('taskForm').reset();
-            document.getElementById('taskId').value = "";
-            document.getElementById('taskDate').value = selectedDay;
-            document.getElementById('category').value = "fechado";
-            document.getElementById('btnDelete').classList.add('hidden');
-            closeModals();
-            document.getElementById('formModal').classList.remove('hidden');
-            document.getElementById('formTitle').innerText = "Novo Compromisso";
-        }
-
-        function editTask(task) {
-            const dateOnly = task.start_time.split('T')[0] || task.start_time.split(' ')[0];
-            document.getElementById('taskId').value = task.id;
-            document.getElementById('title').value = task.title;
-            document.getElementById('description').value = task.description || '';
-            document.getElementById('taskDate').value = dateOnly;
-            document.getElementById('priority').value = task.priority;
-            document.getElementById('category').value = task.category || 'fechado';
-            
-            document.getElementById('btnDelete').classList.remove('hidden');
-            closeModals();
-            document.getElementById('formModal').classList.remove('hidden');
-            document.getElementById('formTitle').innerText = "Editar Compromisso";
-        }
-
-        document.getElementById('taskForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('taskId').value;
-            const newDate = document.getElementById('taskDate').value;
-            const payload = {
-                title: document.getElementById('title').value,
-                description: document.getElementById('description').value,
-                priority: document.getElementById('priority').value,
-                category: document.getElementById('category').value,
-                start_time: `${newDate} 00:00:00`,
-                end_time: `${newDate} 23:59:59`
-            };
-            const url = id ? `{{ url('/tasks') }}/${id}` : `{{ url('/tasks') }}`;
-            try {
-                const response = await fetch(url, {
-                    method: id ? 'PUT' : 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (response.ok) {
-                    closeModals();
-                    calendar.refetchEvents();
-                    calendar.gotoDate(newDate);
-                    checkTodayNotifications();
-                    const msg = id ? "Tarefa editada com sucesso" : "Tarefa adicionada com sucesso";
-                    showFlashcard(msg, 'success');
-                }
-            } catch (error) { console.error('Erro na requisição:', error); }
-        });
-
-        async function deleteTask() {
-            const id = document.getElementById('taskId').value;
-            if (id && confirm('Excluir permanentemente este compromisso?')) {
-                const response = await fetch(`{{ url('/tasks') }}/${id}`, { 
-                    method: 'DELETE', 
-                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } 
-                });
-                if (response.ok) {
-                    closeModals();
-                    calendar.refetchEvents();
-                    checkTodayNotifications();
-                    showFlashcard('Mensagem excluída com sucesso', 'error');
-                }
-            }
-        }
-
-        async function checkTodayNotifications() {
-            const today = new Date().toISOString().split('T')[0];
-            const res = await fetch(`{{ url('/tasks') }}?date=${today}`, {
-                headers: { 'Accept': 'application/json' }
-            });
-            if (res.ok) {
-                const tasks = await res.json();
-                const container = document.getElementById('notification-container');
-                const items = container.querySelectorAll('.notif-item:not([class*="bg-emerald"]):not([class*="bg-rose"])');
-                items.forEach(el => el.remove());
-                tasks.forEach(task => {
-                    const dotClass = task.priority === 'urgent' ? 'dot-urgent' : (task.priority === 'important' ? 'dot-important' : 'dot-optional');
-                    const div = document.createElement('div');
-                    div.className = "notif-item bg-slate-900 text-white p-4 rounded-xl shadow-2xl border-l-4 border-indigo-500 flex justify-between items-start";
-                    div.innerHTML = `
-                        <div>
-                            <h4 class="font-bold text-sm flex items-center"><span class="dot ${dotClass}"></span>Hoje: ${task.title}</h4>
-                            <p class="text-xs text-slate-400 mt-1">${task.description || 'Compromisso agendado'}</p>
-                        </div>
-                        <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white ml-4 text-lg">&times;</button>
-                    `;
-                    container.appendChild(div);
-                });
-            }
-        }
-
-        function closeModals() {
-            document.querySelectorAll('#actionModal, #listModal, #formModal').forEach(m => m.classList.add('hidden'));
-        }
-    </script>
+    function closeModals() {
+        document.querySelectorAll('#actionModal, #listModal, #formModal').forEach(m => m.classList.add('hidden'));
+    }
+</script>
 </body>
 </html>
