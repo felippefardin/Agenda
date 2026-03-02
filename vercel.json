@@ -1,0 +1,7 @@
+{
+    "version": 2,
+    "public": true,
+    "installCommand": "composer install",
+    "buildCommand": "npm install && npm run build",
+    "outputDirectory": "public"
+}
