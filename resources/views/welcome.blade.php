@@ -117,6 +117,31 @@
         let selectedDay;
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
+        // Função para exibir os Flashcards solicitados
+        function showFlashcard(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const flashcard = document.createElement('div');
+            
+            // Define a cor: Verde para sucesso/edição, Vermelho para exclusão
+            const bgColor = type === 'success' ? 'bg-emerald-600' : 'bg-rose-600';
+            
+            flashcard.className = `notif-item ${bgColor} text-white p-4 rounded-xl shadow-2xl flex justify-between items-center min-w-[280px]`;
+            flashcard.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-trash-alt'}"></i>
+                    <span class="font-bold text-sm">${message}</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-white/80 hover:text-white ml-4 text-xl">&times;</button>
+            `;
+
+            container.appendChild(flashcard);
+
+            // Desaparece automaticamente após 3 segundos
+            setTimeout(() => {
+                if (flashcard.parentElement) flashcard.remove();
+            }, 3000);
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
 
@@ -140,7 +165,6 @@
                         extendedProps: { priority: task.priority, description: task.description }
                     };
                 },
-                // Ajuste: URL absoluta gerada pelo Laravel
                 events: "{{ url('/tasks') }}",
                 eventClassNames: (arg) => ['priority-' + arg.event.extendedProps.priority]
             });
@@ -150,7 +174,6 @@
         });
 
         async function showDayTasks() {
-            // Ajuste: URL absoluta e headers
             const res = await fetch(`{{ url('/tasks') }}?date=${selectedDay}`, {
                 headers: { 'Accept': 'application/json' }
             });
@@ -210,7 +233,6 @@
                 category: 'Work'
             };
 
-            // Ajuste: URL absoluta gerada pelo Laravel
             const url = id ? `{{ url('/tasks') }}/${id}` : `{{ url('/tasks') }}`;
 
             try {
@@ -231,14 +253,15 @@
                     calendar.refetchEvents();
                     calendar.gotoDate(newDate);
                     checkTodayNotifications();
-                    alert('Sucesso!');
+                    
+                    // Exibe flashcard verde conforme solicitado
+                    const msg = id ? "Tarefa editada com sucesso" : "Tarefa adicionada com sucesso";
+                    showFlashcard(msg, 'success');
                 } else {
                     console.error('Erro de validação:', data.errors);
-                    alert('Erro ao salvar: ' + (data.message || 'Verifique os dados.'));
                 }
             } catch (error) {
                 console.error('Erro na requisição:', error);
-                alert('Erro de conexão com o servidor.');
             }
         });
 
@@ -256,13 +279,15 @@
                     closeModals();
                     calendar.refetchEvents();
                     checkTodayNotifications();
+                    
+                    // Exibe flashcard vermelho conforme solicitado
+                    showFlashcard('Mensagem excluída com sucesso', 'error');
                 }
             }
         }
 
         async function checkTodayNotifications() {
             const today = new Date().toISOString().split('T')[0];
-            // Ajuste: URL absoluta
             const res = await fetch(`{{ url('/tasks') }}?date=${today}`, {
                 headers: { 'Accept': 'application/json' }
             });
@@ -270,7 +295,9 @@
             if (res.ok) {
                 const tasks = await res.json();
                 const container = document.getElementById('notification-container');
-                container.innerHTML = '';
+                // Limpa apenas as notificações de agenda, preservando flashcards ativos
+                const items = container.querySelectorAll('.notif-item:not([class*="bg-emerald"]):not([class*="bg-rose"])');
+                items.forEach(el => el.remove());
 
                 tasks.forEach(task => {
                     const div = document.createElement('div');
