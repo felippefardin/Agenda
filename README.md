@@ -1,59 +1,68 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Bug Criativo - Agenda Inteligente
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Uma aplicação de agenda intuitiva e moderna desenvolvida com **Laravel 11**, focada no controle de compromissos com níveis de prioridade e status de execução. O projeto utiliza uma interface dinâmica baseada em calendários para facilitar a organização diária.
 
-## About Laravel
+## Funcionalidades
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Calendário Interativo**: Visualização mensal completa utilizando a biblioteca FullCalendar.
+- **Gestão de Tarefas**: Criação, edição e exclusão de compromissos diretamente através de cliques no calendário.
+- **Interface em Português**: Botões de navegação traduzidos (Ex: "Hoje" e "Mês") para melhor usabilidade.
+- **Comportamento Inteligente**: Ao clicar no botão "Mês", o calendário retorna automaticamente para o mês e dia atual.
+- **Sistema de Prioridades**: Classificação visual de tarefas:
+    - 🔴 **Urgente**: Destaque vermelho.
+    - 🟡 **Importante**: Destaque amarelo.
+    - 🟢 **Opcional**: Destaque verde.
+- **Status de Progresso**: Controle do ciclo de vida da tarefa (🔒 Fechado, ⏳ Em andamento, ✅ Finalizado).
+- **Notificações em Tempo Real**: Alertas visuais na tela listando os compromissos agendados para o dia atual.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tecnologias Utilizadas
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Backend**: PHP 8.2+ e Framework Laravel 11.
+- **Frontend**: Blade Templates, Tailwind CSS (estilização) e JavaScript puro.
+- **APIs**: FullCalendar 6 para a renderização do cronograma.
+- **Banco de Dados**: MySQL (configuração padrão via migrations).
 
-## Learning Laravel
+## Como Instalar e Rodar o Projeto
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Se você deseja clonar este projeto em outro computador, siga os passos abaixo:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 1. Requisitos Prévios
+Certifique-se de ter instalado:
+- PHP 8.2 ou superior
+- Composer
+- Node.js e NPM
+- Um servidor de banco de dados (MySQL/MariaDB)
 
-## Laravel Sponsors
+### 2. Instalação das Dependências
+Abra o terminal na pasta do projeto e execute:
+```bash
+composer install
+npm install
+3. Configuração de Ambiente
+Crie o arquivo de configuração local:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Bash
+cp .env.example .env
+Edite o arquivo .env com as suas credenciais de banco de dados:
 
-### Premium Partners
+Snippet de código
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=nome_do_seu_banco
+DB_USERNAME=seu_usuario
+DB_PASSWORD=sua_senha
+4. Inicialização do Banco e Chave
+Bash
+php artisan key:generate
+php artisan migrate
+5. Execução
+Inicie o compilador de ativos e o servidor local:
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Bash
+# Em um terminal
+npm run dev
 
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# Em outro terminal
+php artisan serve
+Acesse: http://localhost:8000
