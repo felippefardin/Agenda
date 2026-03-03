@@ -84,7 +84,7 @@
                 <h2 id="formTitle" class="text-lg font-bold">Novo Compromisso</h2>
                 <button onclick="closeModals()" class="text-slate-400 text-2xl">&times;</button>
             </div>
-            <form id="taskForm" class="p-6 space-y-4">
+            <form id="taskForm" class="p-6 space-y-4" enctype="multipart/form-data">
                 <input type="hidden" id="taskId">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nome</label>
@@ -115,6 +115,21 @@
                             <option value="andamento">⏳ Em andamento</option>
                             <option value="finalizado">✅ Finalizado</option>
                         </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Anexos (Imagens ou Documentos)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="file" id="taskFile" class="hidden" onchange="document.getElementById('fileChosen').innerText = this.files[0].name">
+                        <label for="taskFile" class="cursor-pointer bg-slate-100 hover:bg-slate-200 p-3 rounded-xl flex items-center gap-2 text-slate-600 border-2 border-dashed border-slate-300 w-full justify-center">
+                            <i class="fas fa-paperclip"></i> <span id="fileChosen">Subir Arquivo</span>
+                        </label>
+                    </div>
+                    <div id="currentFile" class="mt-2 hidden">
+                        <a id="fileLink" href="#" target="_blank" class="text-indigo-600 text-xs font-bold flex items-center gap-1 hover:underline">
+                            <i class="fas fa-file-download"></i> Ver Anexo Atual
+                        </a>
                     </div>
                 </div>
 
@@ -162,7 +177,6 @@
                 today: 'Hoje',
                 month: 'Mês'
             },
-            // AJUSTE SOLICITADO: Pinta os dias que já passaram
             dayCellDidMount: function(info) {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -181,17 +195,23 @@
                     title: task.title,
                     start: task.start_time,
                     end: task.end_time,
-                    extendedProps: { priority: task.priority, description: task.description, category: task.category }
+                    extendedProps: { 
+                        priority: task.priority, 
+                        description: task.description, 
+                        category: task.category,
+                        file_path: task.file_path 
+                    }
                 };
             },
             eventContent: function(arg) {
                 const status = arg.event.extendedProps.category || 'fechado';
                 const icon = status === 'finalizado' ? '✅' : (status === 'andamento' ? '⏳' : '🔒');
+                const hasFile = arg.event.extendedProps.file_path ? '📎' : '';
                 
                 let arrayOfDomNodes = [];
                 let titleEl = document.createElement('div');
                 titleEl.className = 'fc-event-title-container flex items-center gap-1 overflow-hidden';
-                titleEl.innerHTML = `<span class="text-[10px] opacity-80">${icon}</span> <span class="truncate">${arg.event.title}</span>`;
+                titleEl.innerHTML = `<span class="text-[10px] opacity-80">${icon}</span> <span class="truncate">${arg.event.title}</span> <span class="text-[10px]">${hasFile}</span>`;
                 arrayOfDomNodes.push(titleEl);
                 return { domNodes: arrayOfDomNodes };
             },
@@ -224,6 +244,7 @@
             const dotClass = task.priority === 'urgent' ? 'dot-urgent' : (task.priority === 'important' ? 'dot-important' : 'dot-optional');
             const statusIcon = task.category === 'finalizado' ? '✅' : (task.category === 'andamento' ? '⏳' : '🔒');
             const statusLabel = task.category ? task.category.charAt(0).toUpperCase() + task.category.slice(1) : 'Fechado';
+            const fileIcon = task.file_path ? `<i class="fas fa-paperclip text-indigo-500 ml-1"></i>` : '';
             
             list.innerHTML += `
                 <div onclick='editTask(${JSON.stringify(task).replace(/'/g, "&apos;")})' class="p-4 border-2 border-slate-50 rounded-xl hover:border-indigo-200 cursor-pointer bg-white transition-all shadow-sm">
@@ -232,7 +253,7 @@
                             <span class="dot ${dotClass}"></span>${task.priority}
                         </span>
                         <span class="text-[10px] font-bold text-slate-400 uppercase italic flex items-center gap-1">
-                            ${statusIcon} ${statusLabel}
+                            ${fileIcon} ${statusIcon} ${statusLabel}
                         </span>
                     </div>
                     <h4 class="font-bold text-slate-800">${task.title}</h4>
@@ -246,6 +267,8 @@
         document.getElementById('taskId').value = "";
         document.getElementById('taskDate').value = selectedDay;
         document.getElementById('category').value = "fechado";
+        document.getElementById('fileChosen').innerText = "Subir Arquivo";
+        document.getElementById('currentFile').classList.add('hidden');
         document.getElementById('btnDelete').classList.add('hidden');
         closeModals();
         document.getElementById('formModal').classList.remove('hidden');
@@ -260,7 +283,15 @@
         document.getElementById('taskDate').value = dateOnly;
         document.getElementById('priority').value = task.priority;
         document.getElementById('category').value = task.category || 'fechado';
+        document.getElementById('fileChosen').innerText = "Alterar Arquivo";
         
+        if(task.file_path) {
+            document.getElementById('currentFile').classList.remove('hidden');
+            document.getElementById('fileLink').href = `/storage/${task.file_path}`;
+        } else {
+            document.getElementById('currentFile').classList.add('hidden');
+        }
+
         document.getElementById('btnDelete').classList.remove('hidden');
         closeModals();
         document.getElementById('formModal').classList.remove('hidden');
@@ -271,20 +302,32 @@
         e.preventDefault();
         const id = document.getElementById('taskId').value;
         const newDate = document.getElementById('taskDate').value;
-        const payload = {
-            title: document.getElementById('title').value,
-            description: document.getElementById('description').value,
-            priority: document.getElementById('priority').value,
-            category: document.getElementById('category').value,
-            start_time: `${newDate} 00:00:00`,
-            end_time: `${newDate} 23:59:59`
-        };
+        
+        // USO DE FORMDATA PARA SUPORTE A ARQUIVOS
+        const formData = new FormData();
+        formData.append('title', document.getElementById('title').value);
+        formData.append('description', document.getElementById('description').value);
+        formData.append('priority', document.getElementById('priority').value);
+        formData.append('category', document.getElementById('category').value);
+        formData.append('start_time', `${newDate} 00:00:00`);
+        formData.append('end_time', `${newDate} 23:59:59`);
+        
+        const fileInput = document.getElementById('taskFile');
+        if (fileInput.files.length > 0) {
+            formData.append('file', fileInput.files[0]);
+        }
+
+        if (id) {
+            formData.append('_method', 'PUT'); // Simula PUT via POST para o Laravel aceitar arquivos
+        }
+
         const url = id ? `{{ url('/tasks') }}/${id}` : `{{ url('/tasks') }}`;
+        
         try {
             const response = await fetch(url, {
-                method: id ? 'PUT' : 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                body: JSON.stringify(payload)
+                method: 'POST', // Sempre POST ao usar FormData com arquivos
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: formData
             });
             if (response.ok) {
                 closeModals();

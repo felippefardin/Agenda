@@ -14,7 +14,8 @@ class Task extends Model
         'priority',
         'start_time',
         'end_time',
-        'is_notified'
+        'is_notified',
+        'file_path'
     ];
 
     

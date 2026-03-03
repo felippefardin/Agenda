@@ -20,21 +20,24 @@ class TaskController extends Controller
 
     // Criar nova tarefa com validação robusta
     public function store(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'category' => 'nullable|string',
-            'priority' => 'required|in:urgent,important,optional',
-            'start_time' => 'required|date',
-            'end_time' => 'required|date|after_or_equal:start_time'
-        ]);
+{
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'priority' => 'required|in:urgent,important,optional',
+        'start_time' => 'required|date',
+        'end_time' => 'required|date|after_or_equal:start_time',
+        'file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,docx|max:2048' // Validação do arquivo
+    ]);
 
-        $task = Task::create($request->all());
-        
-        // Uso correto do helper response() para evitar erros fatais
-        return response()->json($task, 201);
+    $data = $request->all();
+
+    if ($request->hasFile('file')) {
+        $data['file_path'] = $request->file('file')->store('attachments', 'public');
     }
+
+    $task = Task::create($data);
+    return response()->json($task, 201);
+}
 
     // Busca notificações próximas (próxima 1 hora)
     public function checkNotifications()
