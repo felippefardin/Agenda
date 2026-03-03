@@ -158,10 +158,17 @@
             locale: 'pt-br',
             displayEventTime: false,
             headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' },
-            // AJUSTE: Tradução dos botões da interface
             buttonText: {
                 today: 'Hoje',
                 month: 'Mês'
+            },
+            // AJUSTE SOLICITADO: Pinta os dias que já passaram
+            dayCellDidMount: function(info) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (info.date < today) {
+                    info.el.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+                }
             },
             dateClick: (info) => {
                 selectedDay = info.dateStr;
@@ -193,7 +200,6 @@
         });
         calendar.render();
 
-        // AJUSTE: Ao clicar no botão "Mês", volta para a data atual (hoje)
         const monthButton = document.querySelector('.fc-dayGridMonth-button');
         if (monthButton) {
             monthButton.addEventListener('click', function() {
