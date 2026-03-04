@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tasks', function (Blueprint $table) {
-            // Adiciona a coluna para guardar o caminho do arquivo
-            $table->string('file_path')->nullable()->after('category');
+           
+            $table->string('file_path')->nullable()->after('priority');
         });
     }
 

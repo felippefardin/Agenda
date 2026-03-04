@@ -15,7 +15,7 @@ class Task extends Model
         'start_time',
         'end_time',
         'is_notified',
-        'file_path'
+        'file_path',
     ];
 
     

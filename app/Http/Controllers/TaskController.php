@@ -8,7 +8,6 @@ use Carbon\Carbon;
 
 class TaskController extends Controller
 {
-    // Listar tarefas - aceita filtro por data ?date=YYYY-MM-DD
     public function index(Request $request)
     {
         $query = Task::query();
@@ -18,54 +17,24 @@ class TaskController extends Controller
         return $query->orderBy('start_time', 'asc')->get();
     }
 
-    // Criar nova tarefa com validação robusta
     public function store(Request $request)
-{
-    $request->validate([
-        'title' => 'required|string|max:255',
-        'priority' => 'required|in:urgent,important,optional',
-        'start_time' => 'required|date',
-        'end_time' => 'required|date|after_or_equal:start_time',
-        'file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,docx|max:2048' // Validação do arquivo
-    ]);
-
-    $data = $request->all();
-
-    if ($request->hasFile('file')) {
-        $data['file_path'] = $request->file('file')->store('attachments', 'public');
-    }
-
-    $task = Task::create($data);
-    return response()->json($task, 201);
-}
-
-    // Busca notificações próximas (próxima 1 hora)
-    public function checkNotifications()
     {
-        return Task::where('is_notified', false)
-            ->whereBetween('start_time', [now(), now()->addHour()])
-            ->first();
-    }
-
-    // Adiar notificação em 10 minutos
-    public function snooze($id)
-    {
-        $task = Task::findOrFail($id);
-        $task->update([
-            'start_time' => Carbon::parse($task->start_time)->addMinutes(10),
-            'is_notified' => false
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'priority' => 'required|in:urgent,important,optional',
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after_or_equal:start_time'
         ]);
-        return response()->json(['message' => 'Adiado']);
+
+        $task = Task::create($request->all());
+        return response()->json($task, 201);
     }
 
-    // Atualizar tarefa existente
     public function update(Request $request, $id)
     {
         $task = Task::findOrFail($id);
-        
         $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
             'priority' => 'required|in:urgent,important,optional',
             'start_time' => 'required|date',
             'end_time' => 'required|date|after_or_equal:start_time'
@@ -75,11 +44,9 @@ class TaskController extends Controller
         return response()->json($task);
     }
 
-    // Remover tarefa
     public function destroy($id)
     {
-        $task = Task::findOrFail($id);
-        $task->delete();
+        Task::findOrFail($id)->delete();
         return response()->json(['message' => 'Removida']);
     }
 }

@@ -126,9 +126,11 @@
                             <i class="fas fa-paperclip"></i> <span id="fileChosen">Subir Arquivo</span>
                         </label>
                     </div>
-                    <div id="currentFile" class="mt-2 hidden">
-                        <a id="fileLink" href="#" target="_blank" class="text-indigo-600 text-xs font-bold flex items-center gap-1 hover:underline">
-                            <i class="fas fa-file-download"></i> Ver Anexo Atual
+                    <div id="currentFile" class="mt-4 hidden border p-2 rounded-xl bg-slate-50">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Arquivo Atual:</p>
+                        <a id="fileLink" href="#" target="_blank" class="block">
+                            <img id="imagePreview" src="" class="w-20 h-20 object-cover rounded-lg border shadow-sm hover:opacity-80 transition-opacity">
+                            <span id="fileFallback" class="hidden text-indigo-600 text-xs font-bold"><i class="fas fa-file-download"></i> Baixar Documento</span>
                         </a>
                     </div>
                 </div>
@@ -244,7 +246,23 @@
             const dotClass = task.priority === 'urgent' ? 'dot-urgent' : (task.priority === 'important' ? 'dot-important' : 'dot-optional');
             const statusIcon = task.category === 'finalizado' ? '✅' : (task.category === 'andamento' ? '⏳' : '🔒');
             const statusLabel = task.category ? task.category.charAt(0).toUpperCase() + task.category.slice(1) : 'Fechado';
-            const fileIcon = task.file_path ? `<i class="fas fa-paperclip text-indigo-500 ml-1"></i>` : '';
+            
+            // Lógica para miniatura na lista
+            let thumbnailHtml = '';
+            if (task.file_path) {
+                const isImage = /\.(jpg|jpeg|png|gif)$/i.test(task.file_path);
+                if (isImage) {
+                    thumbnailHtml = `
+                        <div class="mt-3">
+                            <a href="/storage/${task.file_path}" target="_blank" onclick="event.stopPropagation()">
+                                <img src="/storage/${task.file_path}" class="w-16 h-16 object-cover rounded-lg border shadow-sm hover:scale-105 transition-transform">
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    thumbnailHtml = `<div class="mt-2"><a href="/storage/${task.file_path}" target="_blank" onclick="event.stopPropagation()" class="text-indigo-600 text-[10px] font-bold underline"><i class="fas fa-file"></i> Ver Documento</a></div>`;
+                }
+            }
             
             list.innerHTML += `
                 <div onclick='editTask(${JSON.stringify(task).replace(/'/g, "&apos;")})' class="p-4 border-2 border-slate-50 rounded-xl hover:border-indigo-200 cursor-pointer bg-white transition-all shadow-sm">
@@ -253,11 +271,12 @@
                             <span class="dot ${dotClass}"></span>${task.priority}
                         </span>
                         <span class="text-[10px] font-bold text-slate-400 uppercase italic flex items-center gap-1">
-                            ${fileIcon} ${statusIcon} ${statusLabel}
+                            ${statusIcon} ${statusLabel}
                         </span>
                     </div>
                     <h4 class="font-bold text-slate-800">${task.title}</h4>
                     <p class="text-xs text-slate-500 line-clamp-2">${task.description || ''}</p>
+                    ${thumbnailHtml}
                 </div>`;
         });
     }
@@ -287,7 +306,18 @@
         
         if(task.file_path) {
             document.getElementById('currentFile').classList.remove('hidden');
-            document.getElementById('fileLink').href = `/storage/${task.file_path}`;
+            const fileUrl = `/storage/${task.file_path}`;
+            document.getElementById('fileLink').href = fileUrl;
+            
+            const isImage = /\.(jpg|jpeg|png|gif)$/i.test(task.file_path);
+            if(isImage) {
+                document.getElementById('imagePreview').src = fileUrl;
+                document.getElementById('imagePreview').classList.remove('hidden');
+                document.getElementById('fileFallback').classList.add('hidden');
+            } else {
+                document.getElementById('imagePreview').classList.add('hidden');
+                document.getElementById('fileFallback').classList.remove('hidden');
+            }
         } else {
             document.getElementById('currentFile').classList.add('hidden');
         }
@@ -303,7 +333,6 @@
         const id = document.getElementById('taskId').value;
         const newDate = document.getElementById('taskDate').value;
         
-        // USO DE FORMDATA PARA SUPORTE A ARQUIVOS
         const formData = new FormData();
         formData.append('title', document.getElementById('title').value);
         formData.append('description', document.getElementById('description').value);
@@ -318,14 +347,14 @@
         }
 
         if (id) {
-            formData.append('_method', 'PUT'); // Simula PUT via POST para o Laravel aceitar arquivos
+            formData.append('_method', 'PUT'); 
         }
 
         const url = id ? `{{ url('/tasks') }}/${id}` : `{{ url('/tasks') }}`;
         
         try {
             const response = await fetch(url, {
-                method: 'POST', // Sempre POST ao usar FormData com arquivos
+                method: 'POST', 
                 headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                 body: formData
             });
