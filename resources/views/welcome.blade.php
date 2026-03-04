@@ -11,44 +11,54 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 
     <style>
+        /* Estilos de tela cheia */
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        .app-container { height: 100vh; display: flex; flex-direction: column; }
+        
+        /* Personalização do Calendário */
+        .fc { height: 100% !important; font-size: 0.9rem; }
         .fc-daygrid-day { cursor: pointer; transition: 0.2s; }
         .fc-daygrid-day:hover { background-color: #f1f5f9 !important; }
+        
+        /* Esconde explicitamente células de outros meses caso o script demore a carregar */
+        .fc-day-other { visibility: hidden !important; pointer-events: none !important; }
+        
         .priority-urgent { border-left: 5px solid #ef4444 !important; background: #fee2e2 !important; color: #b91c1c !important; }
         .priority-important { border-left: 5px solid #f59e0b !important; background: #fef3c7 !important; color: #b45309 !important; }
         .priority-optional { border-left: 5px solid #10b981 !important; background: #d1fae5 !important; color: #047857 !important; }
-        .fc-event { border: none !important; margin: 2px 4px !important; padding: 2px 5px !important; font-weight: bold; font-size: 0.85em; border-radius: 6px !important; }
         
+        .fc-event { border: none !important; margin: 2px 4px !important; padding: 2px 5px !important; font-weight: bold; font-size: 0.85em; border-radius: 6px !important; }
+
+        @media (max-width: 640px) {
+            .fc-toolbar { flex-direction: column; gap: 8px; }
+            .fc-toolbar-title { font-size: 1.1rem !important; }
+            #clock { display: none; }
+            .app-header { padding: 0.75rem 1rem; }
+        }
+
         #notification-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-width: 320px;
+            position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+            display: flex; flex-direction: column; gap: 10px; max-width: 320px;
         }
-        .notif-item {
-            animation: slideIn 0.3s ease-out;
-        }
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
+        .notif-item { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
         .dot-urgent { background-color: #ef4444; }
         .dot-important { background-color: #f59e0b; }
         .dot-optional { background-color: #10b981; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen p-4">
+<body class="bg-slate-50">
 
-    <div class="max-w-6xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border border-slate-200">
-        <header class="p-6 bg-indigo-600 text-white flex justify-between items-center">
-            <h1 class="text-2xl font-bold"><i class="fas fa-calendar-alt mr-2"></i> Minha Agenda</h1>
+    <div class="app-container">
+        <header class="app-header p-6 bg-indigo-600 text-white flex justify-between items-center shadow-lg">
+            <h1 class="text-xl md:text-2xl font-bold"><i class="fas fa-calendar-alt mr-2"></i> Minha Agenda</h1>
             <p id="clock" class="text-sm font-mono bg-indigo-500 px-3 py-1 rounded-lg"></p>
         </header>
-        <div id="calendar" class="p-6 min-h-[750px]"></div>
+
+        <main class="flex-grow bg-white overflow-hidden">
+            <div id="calendar" class="h-full p-2 md:p-6"></div>
+        </main>
     </div>
 
     <div id="notification-container"></div>
@@ -84,7 +94,7 @@
                 <h2 id="formTitle" class="text-lg font-bold">Novo Compromisso</h2>
                 <button onclick="closeModals()" class="text-slate-400 text-2xl">&times;</button>
             </div>
-            <form id="taskForm" class="p-6 space-y-4" enctype="multipart/form-data">
+            <form id="taskForm" class="p-6 space-y-4">
                 <input type="hidden" id="taskId">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nome</label>
@@ -115,23 +125,6 @@
                             <option value="andamento">⏳ Em andamento</option>
                             <option value="finalizado">✅ Finalizado</option>
                         </select>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Anexos (Imagens ou Documentos)</label>
-                    <div class="flex items-center gap-2">
-                        <input type="file" id="taskFile" class="hidden" onchange="document.getElementById('fileChosen').innerText = this.files[0].name">
-                        <label for="taskFile" class="cursor-pointer bg-slate-100 hover:bg-slate-200 p-3 rounded-xl flex items-center gap-2 text-slate-600 border-2 border-dashed border-slate-300 w-full justify-center">
-                            <i class="fas fa-paperclip"></i> <span id="fileChosen">Subir Arquivo</span>
-                        </label>
-                    </div>
-                    <div id="currentFile" class="mt-4 hidden border p-2 rounded-xl bg-slate-50">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Arquivo Atual:</p>
-                        <a id="fileLink" href="#" target="_blank" class="block">
-                            <img id="imagePreview" src="" class="w-20 h-20 object-cover rounded-lg border shadow-sm hover:opacity-80 transition-opacity">
-                            <span id="fileFallback" class="hidden text-indigo-600 text-xs font-bold"><i class="fas fa-file-download"></i> Baixar Documento</span>
-                        </a>
                     </div>
                 </div>
 
@@ -167,23 +160,34 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
+        setInterval(() => { 
+            const clockEl = document.getElementById('clock');
+            if(clockEl) clockEl.innerText = new Date().toLocaleTimeString('pt-BR'); 
+        }, 1000);
 
         const calendarEl = document.getElementById('calendar');
         calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
+            initialView: window.innerWidth < 768 ? 'dayGridDay' : 'dayGridMonth',
             locale: 'pt-br',
+            height: '100%',
             displayEventTime: false,
-            headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' },
-            buttonText: {
-                today: 'Hoje',
-                month: 'Mês'
+            
+            // --- AJUSTES SOLICITADOS ---
+            showNonCurrentDates: false, // Não mostra dias de outros meses
+            fixedWeekCount: false,      // Ajusta a altura se o mês tiver 4, 5 ou 6 semanas
+            // ---------------------------
+
+            headerToolbar: { 
+                left: 'prev,next today', 
+                center: 'title', 
+                right: 'dayGridMonth,dayGridWeek,dayGridDay' 
             },
+            buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' },
             dayCellDidMount: function(info) {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                if (info.date < today) {
-                    info.el.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+                if (info.date < today && info.isCurrent) {
+                    info.el.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
                 }
             },
             dateClick: (info) => {
@@ -200,35 +204,29 @@
                     extendedProps: { 
                         priority: task.priority, 
                         description: task.description, 
-                        category: task.category,
-                        file_path: task.file_path 
+                        category: task.category
                     }
                 };
             },
             eventContent: function(arg) {
                 const status = arg.event.extendedProps.category || 'fechado';
                 const icon = status === 'finalizado' ? '✅' : (status === 'andamento' ? '⏳' : '🔒');
-                const hasFile = arg.event.extendedProps.file_path ? '📎' : '';
-                
-                let arrayOfDomNodes = [];
                 let titleEl = document.createElement('div');
-                titleEl.className = 'fc-event-title-container flex items-center gap-1 overflow-hidden';
-                titleEl.innerHTML = `<span class="text-[10px] opacity-80">${icon}</span> <span class="truncate">${arg.event.title}</span> <span class="text-[10px]">${hasFile}</span>`;
-                arrayOfDomNodes.push(titleEl);
-                return { domNodes: arrayOfDomNodes };
+                titleEl.className = 'fc-event-title-container flex items-center gap-1 overflow-hidden text-xs';
+                titleEl.innerHTML = `<span>${icon}</span> <span class="truncate">${arg.event.title}</span>`;
+                return { domNodes: [titleEl] };
             },
             events: "{{ url('/tasks') }}",
-            eventClassNames: (arg) => ['priority-' + arg.event.extendedProps.priority]
+            eventClassNames: (arg) => ['priority-' + arg.event.extendedProps.priority],
+            windowResize: function(view) {
+                if (window.innerWidth < 768) {
+                    calendar.changeView('dayGridDay');
+                } else {
+                    calendar.changeView('dayGridMonth');
+                }
+            }
         });
         calendar.render();
-
-        const monthButton = document.querySelector('.fc-dayGridMonth-button');
-        if (monthButton) {
-            monthButton.addEventListener('click', function() {
-                calendar.today();
-            });
-        }
-
         checkTodayNotifications();
     });
 
@@ -247,23 +245,6 @@
             const statusIcon = task.category === 'finalizado' ? '✅' : (task.category === 'andamento' ? '⏳' : '🔒');
             const statusLabel = task.category ? task.category.charAt(0).toUpperCase() + task.category.slice(1) : 'Fechado';
             
-            // Lógica para miniatura na lista
-            let thumbnailHtml = '';
-            if (task.file_path) {
-                const isImage = /\.(jpg|jpeg|png|gif)$/i.test(task.file_path);
-                if (isImage) {
-                    thumbnailHtml = `
-                        <div class="mt-3">
-                            <a href="/storage/${task.file_path}" target="_blank" onclick="event.stopPropagation()">
-                                <img src="/storage/${task.file_path}" class="w-16 h-16 object-cover rounded-lg border shadow-sm hover:scale-105 transition-transform">
-                            </a>
-                        </div>
-                    `;
-                } else {
-                    thumbnailHtml = `<div class="mt-2"><a href="/storage/${task.file_path}" target="_blank" onclick="event.stopPropagation()" class="text-indigo-600 text-[10px] font-bold underline"><i class="fas fa-file"></i> Ver Documento</a></div>`;
-                }
-            }
-            
             list.innerHTML += `
                 <div onclick='editTask(${JSON.stringify(task).replace(/'/g, "&apos;")})' class="p-4 border-2 border-slate-50 rounded-xl hover:border-indigo-200 cursor-pointer bg-white transition-all shadow-sm">
                     <div class="flex justify-between items-center mb-1">
@@ -276,7 +257,6 @@
                     </div>
                     <h4 class="font-bold text-slate-800">${task.title}</h4>
                     <p class="text-xs text-slate-500 line-clamp-2">${task.description || ''}</p>
-                    ${thumbnailHtml}
                 </div>`;
         });
     }
@@ -286,8 +266,6 @@
         document.getElementById('taskId').value = "";
         document.getElementById('taskDate').value = selectedDay;
         document.getElementById('category').value = "fechado";
-        document.getElementById('fileChosen').innerText = "Subir Arquivo";
-        document.getElementById('currentFile').classList.add('hidden');
         document.getElementById('btnDelete').classList.add('hidden');
         closeModals();
         document.getElementById('formModal').classList.remove('hidden');
@@ -302,25 +280,6 @@
         document.getElementById('taskDate').value = dateOnly;
         document.getElementById('priority').value = task.priority;
         document.getElementById('category').value = task.category || 'fechado';
-        document.getElementById('fileChosen').innerText = "Alterar Arquivo";
-        
-        if(task.file_path) {
-            document.getElementById('currentFile').classList.remove('hidden');
-            const fileUrl = `/storage/${task.file_path}`;
-            document.getElementById('fileLink').href = fileUrl;
-            
-            const isImage = /\.(jpg|jpeg|png|gif)$/i.test(task.file_path);
-            if(isImage) {
-                document.getElementById('imagePreview').src = fileUrl;
-                document.getElementById('imagePreview').classList.remove('hidden');
-                document.getElementById('fileFallback').classList.add('hidden');
-            } else {
-                document.getElementById('imagePreview').classList.add('hidden');
-                document.getElementById('fileFallback').classList.remove('hidden');
-            }
-        } else {
-            document.getElementById('currentFile').classList.add('hidden');
-        }
 
         document.getElementById('btnDelete').classList.remove('hidden');
         closeModals();
@@ -333,30 +292,27 @@
         const id = document.getElementById('taskId').value;
         const newDate = document.getElementById('taskDate').value;
         
-        const formData = new FormData();
-        formData.append('title', document.getElementById('title').value);
-        formData.append('description', document.getElementById('description').value);
-        formData.append('priority', document.getElementById('priority').value);
-        formData.append('category', document.getElementById('category').value);
-        formData.append('start_time', `${newDate} 00:00:00`);
-        formData.append('end_time', `${newDate} 23:59:59`);
-        
-        const fileInput = document.getElementById('taskFile');
-        if (fileInput.files.length > 0) {
-            formData.append('file', fileInput.files[0]);
-        }
-
-        if (id) {
-            formData.append('_method', 'PUT'); 
-        }
+        const payload = {
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            priority: document.getElementById('priority').value,
+            category: document.getElementById('category').value,
+            start_time: `${newDate} 00:00:00`,
+            end_time: `${newDate} 23:59:59`
+        };
 
         const url = id ? `{{ url('/tasks') }}/${id}` : `{{ url('/tasks') }}`;
+        const method = id ? 'PUT' : 'POST';
         
         try {
             const response = await fetch(url, {
-                method: 'POST', 
-                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                body: formData
+                method: method, 
+                headers: { 
+                    'X-CSRF-TOKEN': csrf, 
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
             });
             if (response.ok) {
                 closeModals();
