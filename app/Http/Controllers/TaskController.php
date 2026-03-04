@@ -5,15 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Task;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth; // Adicionado para facilitar o uso do Auth
 
 class TaskController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Task::query();
+        // FILTRO DE SEGURANÇA: Começa a query filtrando apenas tarefas do usuário logado
+        $query = Task::where('user_id', Auth::id()); 
+        
         if ($request->has('date')) {
             $query->whereDate('start_time', $request->date);
         }
+        
         return $query->orderBy('start_time', 'asc')->get();
     }
 
@@ -26,13 +30,19 @@ class TaskController extends Controller
             'end_time' => 'required|date|after_or_equal:start_time'
         ]);
 
-        $task = Task::create($request->all());
+        // SEGURANÇA: Adiciona o user_id do usuário logado aos dados salvos
+        $data = $request->all();
+        $data['user_id'] = Auth::id();
+
+        $task = Task::create($data);
         return response()->json($task, 201);
     }
 
     public function update(Request $request, $id)
     {
-        $task = Task::findOrFail($id);
+        // SEGURANÇA: findOrFail com filtro de usuário garante que ele não edite tarefas alheias
+        $task = Task::where('user_id', Auth::id())->findOrFail($id);
+        
         $request->validate([
             'title' => 'required|string|max:255',
             'priority' => 'required|in:urgent,important,optional',
@@ -46,7 +56,10 @@ class TaskController extends Controller
 
     public function destroy($id)
     {
-        Task::findOrFail($id)->delete();
+        // SEGURANÇA: Filtro de usuário para impedir exclusão de tarefas de outros
+        $task = Task::where('user_id', Auth::id())->findOrFail($id);
+        $task->delete();
+        
         return response()->json(['message' => 'Removida']);
     }
 }

@@ -7,16 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class Task extends Model
 {
     
-  protected $fillable = [
-        'title',
-        'description',
-        'category',
-        'priority',
-        'start_time',
-        'end_time',
-        'is_notified',
-    ];
-
+ protected $fillable = [
+    'user_id', // Adicione esta linha se não existir
+    'title',
+    'description',
+    'priority',
+    'category',
+    'start_time',
+    'end_time',
+];
     
     protected $casts = [
     'start_time' => 'datetime',
