@@ -38,7 +38,7 @@ class TaskController extends Controller
         // 3. Cria usando apenas o que passou na validação + user_id
         $task = Task::create($validated);
         
-        return response()->json($task, 201);
+        return redirect()->route('dashboard')->with('success', 'Tarefa criada com sucesso!');
     }
 
     public function update(Request $request, $id)
