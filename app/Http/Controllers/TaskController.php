@@ -9,16 +9,14 @@ use Illuminate\Support\Facades\Auth;
 
 class TaskController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = Task::where('user_id', Auth::id()); 
-        
-        if ($request->has('date')) {
-            $query->whereDate('start_time', $request->date);
-        }
-        
-        return $query->orderBy('start_time', 'asc')->get();
-    }
+  public function index(Request $request)
+{
+    $tasks = Task::where('user_id', Auth::id())
+        ->orderBy('start_time', 'asc')
+        ->get();
+
+    return view('dashboard', compact('tasks')); 
+}
 
     public function store(Request $request)
     {
@@ -35,9 +33,6 @@ class TaskController extends Controller
         // 2. Adiciona o user_id apenas aos dados validados
         $validated['user_id'] = Auth::id();
 
-        // 3. Cria usando apenas o que passou na validação + user_id
-        $task = Task::create($validated);
-        
         return redirect()->route('dashboard')->with('success', 'Tarefa criada com sucesso!');
     }
 

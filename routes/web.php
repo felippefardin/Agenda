@@ -6,7 +6,7 @@ use App\Http\Controllers\ProfileController;
 
 // Redireciona a raiz para o dashboard (agenda)
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    Route::get('/dashboard', [TaskController.php, 'index'])->name('dashboard');
 });
 
 // Suas rotas protegidas
