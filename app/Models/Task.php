@@ -8,7 +8,7 @@ class Task extends Model
 {
     
  protected $fillable = [
-    'user_id', // Adicione esta linha se não existir
+    'user_id', 
     'title',
     'description',
     'priority',

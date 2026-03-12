@@ -5,13 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Task;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Auth; // Adicionado para facilitar o uso do Auth
+use Illuminate\Support\Facades\Auth;
 
 class TaskController extends Controller
 {
     public function index(Request $request)
     {
-        // FILTRO DE SEGURANÇA: Começa a query filtrando apenas tarefas do usuário logado
         $query = Task::where('user_id', Auth::id()); 
         
         if ($request->has('date')) {
@@ -25,12 +24,13 @@ class TaskController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
+            'description' => 'nullable|string', // Adicionado pois seu formulário envia este campo
             'priority' => 'required|in:urgent,important,optional',
+            'status' => 'required|string', // ESSENCIAL: Adicionado para bater com seu JavaScript/Model
             'start_time' => 'required|date',
             'end_time' => 'required|date|after_or_equal:start_time'
         ]);
 
-        // SEGURANÇA: Adiciona o user_id do usuário logado aos dados salvos
         $data = $request->all();
         $data['user_id'] = Auth::id();
 
@@ -40,12 +40,13 @@ class TaskController extends Controller
 
     public function update(Request $request, $id)
     {
-        // SEGURANÇA: findOrFail com filtro de usuário garante que ele não edite tarefas alheias
         $task = Task::where('user_id', Auth::id())->findOrFail($id);
         
         $request->validate([
             'title' => 'required|string|max:255',
+            'description' => 'nullable|string', // Adicionado
             'priority' => 'required|in:urgent,important,optional',
+            'status' => 'required|string', // Adicionado
             'start_time' => 'required|date',
             'end_time' => 'required|date|after_or_equal:start_time'
         ]);
@@ -56,7 +57,6 @@ class TaskController extends Controller
 
     public function destroy($id)
     {
-        // SEGURANÇA: Filtro de usuário para impedir exclusão de tarefas de outros
         $task = Task::where('user_id', Auth::id())->findOrFail($id);
         $task->delete();
         

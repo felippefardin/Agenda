@@ -240,24 +240,38 @@
     }
 
     document.getElementById('taskForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('taskId').value;
-        const payload = {
-            title: document.getElementById('title').value,
-            description: document.getElementById('description').value,
-            priority: document.getElementById('priority').value,
-            category: document.getElementById('category').value,
-            start_time: `${document.getElementById('taskDate').value} 00:00:00`,
-            end_time: `${document.getElementById('taskDate').value} 23:59:59`
-        };
-        await fetch(id ? `{{ url('/tasks') }}/${id}` : `{{ url('/tasks') }}`, {
-            method: id ? 'PUT' : 'POST',
-            headers: { 'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+    e.preventDefault();
+    const id = document.getElementById('taskId').value;
+    
+    // Ajustando os nomes para baterem com o TaskController e o Model Task
+    const payload = {
+        title: document.getElementById('title').value,
+        description: document.getElementById('description').value,
+        priority: document.getElementById('priority').value,
+        status: document.getElementById('category').value, // Mudei de 'category' para 'status'
+        start_time: `${document.getElementById('taskDate').value} 00:00:00`,
+        end_time: `${document.getElementById('taskDate').value} 23:59:59`
+    };
+
+    const response = await fetch(id ? `{{ url('/tasks') }}/${id}` : `{{ url('/tasks') }}`, {
+        method: id ? 'PUT' : 'POST',
+        headers: { 
+            'X-CSRF-TOKEN': csrf, 
+            'Content-Type': 'application/json', 
+            'Accept': 'application/json' 
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
         closeModals();
         calendar.refetchEvents();
-    });
+    } else {
+        const errorData = await response.json();
+        console.error('Erro na validação:', errorData);
+        alert('Erro ao salvar: ' + (errorData.message || 'Verifique os campos.'));
+    }
+});
 
     async function checkTodayNotifications() {
         const today = new Date().toISOString().split('T')[0];
