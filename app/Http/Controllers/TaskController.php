@@ -22,19 +22,22 @@ class TaskController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        // 1. Validação estrita
+        $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string', // Adicionado pois seu formulário envia este campo
+            'description' => 'nullable|string', 
             'priority' => 'required|in:urgent,important,optional',
-            'status' => 'required|string', // ESSENCIAL: Adicionado para bater com seu JavaScript/Model
+            'status' => 'required|string', 
             'start_time' => 'required|date',
             'end_time' => 'required|date|after_or_equal:start_time'
         ]);
 
-        $data = $request->all();
-        $data['user_id'] = Auth::id();
+        // 2. Adiciona o user_id apenas aos dados validados
+        $validated['user_id'] = Auth::id();
 
-        $task = Task::create($data);
+        // 3. Cria usando apenas o que passou na validação + user_id
+        $task = Task::create($validated);
+        
         return response()->json($task, 201);
     }
 
@@ -42,16 +45,17 @@ class TaskController extends Controller
     {
         $task = Task::where('user_id', Auth::id())->findOrFail($id);
         
-        $request->validate([
+        $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string', // Adicionado
+            'description' => 'nullable|string', 
             'priority' => 'required|in:urgent,important,optional',
-            'status' => 'required|string', // Adicionado
+            'status' => 'required|string', 
             'start_time' => 'required|date',
             'end_time' => 'required|date|after_or_equal:start_time'
         ]);
 
-        $task->update($request->all());
+        $task->update($validated);
+        
         return response()->json($task);
     }
 

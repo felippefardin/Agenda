@@ -121,10 +121,10 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label>
                         <select id="status" class="w-full border-2 p-3 rounded-xl bg-white outline-none">
-                            <option value="fechado">🔒 Fechado</option>
-                            <option value="andamento">⏳ Em andamento</option>
-                            <option value="finalizado">✅ Finalizado</option>
-                        </select>
+    <option value="fechado">🔒 Fechado</option>
+    <option value="andamento">⏳ Em andamento</option>
+    <option value="finalizado">✅ Finalizado</option>
+</select>
                     </div>
                 </div>
 
@@ -240,18 +240,19 @@
     }
 
     document.getElementById('taskForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('taskId').value;
-        
-        const payload = {
-            title: document.getElementById('title').value,
-            description: document.getElementById('description').value,
-            priority: document.getElementById('priority').value,
-            status: document.getElementById('status').value, // Bate com o Controller e Model
-            start_time: `${document.getElementById('taskDate').value} 00:00:00`,
-            end_time: `${document.getElementById('taskDate').value} 23:59:59`
-        };
+    e.preventDefault();
+    const id = document.getElementById('taskId').value;
+    
+    const payload = {
+    title: document.getElementById('title').value,
+    description: document.getElementById('description').value,
+    priority: document.getElementById('priority').value,
+    category: document.getElementById('status').value, // Envia para 'category'
+    start_time: `${document.getElementById('taskDate').value} 00:00:00`,
+    end_time: `${document.getElementById('taskDate').value} 23:59:59`
+};
 
+    try {
         const response = await fetch(id ? `{{ url('/tasks') }}/${id}` : `{{ url('/tasks') }}`, {
             method: id ? 'PUT' : 'POST',
             headers: { 
@@ -262,14 +263,28 @@
             body: JSON.stringify(payload)
         });
 
+        const data = await response.json();
+
         if (response.ok) {
             closeModals();
             calendar.refetchEvents();
         } else {
-            const errorData = await response.json();
-            alert('Erro ao salvar: ' + JSON.stringify(errorData.errors));
+            // Tratamento detalhado para evitar o 'undefined'
+            console.error('Erros de validação:', data.errors);
+            
+            if (data.errors) {
+                // Junta todas as mensagens de erro em uma string
+                const errorMessages = Object.values(data.errors).flat().join('\n');
+                alert('Erro de validação:\n' + errorMessages);
+            } else {
+                alert('Erro ao salvar: ' + (data.message || 'Erro desconhecido no servidor.'));
+            }
         }
-    });
+    } catch (err) {
+        console.error('Erro na requisição:', err);
+        alert('Erro crítico: Verifique a ligação ao servidor ou o console (F12).');
+    }
+});
 
     async function deleteTask() {
         const id = document.getElementById('taskId').value;
