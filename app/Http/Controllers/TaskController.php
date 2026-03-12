@@ -4,23 +4,25 @@ namespace App\Http\Controllers;
 
 use App\Models\Task;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 class TaskController extends Controller
 {
-  public function index(Request $request)
-{
-    $tasks = Task::where('user_id', Auth::id())
-        ->orderBy('start_time', 'asc')
-        ->get();
+    public function index(Request $request)
+    {
+        $tasks = Task::where('user_id', Auth::id())
+            ->orderBy('start_time', 'asc')
+            ->get();
 
-    return view('dashboard', compact('tasks')); 
-}
+        return view('dashboard', compact('tasks')); 
+    }
 
     public function store(Request $request)
     {
-        // 1. Validação estrita
+        // MOSTRA TUDO QUE O FORMULÁRIO ESTÁ ENVIANDO
+        dd($request->all());
+
+        // Validação
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string', 
@@ -30,8 +32,11 @@ class TaskController extends Controller
             'end_time' => 'required|date|after_or_equal:start_time'
         ]);
 
-        // 2. Adiciona o user_id apenas aos dados validados
+        // adiciona usuário
         $validated['user_id'] = Auth::id();
+
+        // cria tarefa
+        Task::create($validated);
 
         return redirect()->route('dashboard')->with('success', 'Tarefa criada com sucesso!');
     }
